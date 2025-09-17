@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { Phone, Mail, MapPin, Building2, Cable, Shield, Zap } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Building2,
+  Cable,
+  Shield,
+  Zap,
+} from "lucide-react";
+import Image from "next/image";
 
 const footerNavigation = {
   Products: [
@@ -14,11 +23,6 @@ const footerNavigation = {
     { name: "Distributor Login", href: "/distributor-login" },
     { name: "Contact Us", href: "/contact" },
   ],
-  Support: [
-    { name: "Technical Support", href: "/contact" },
-    { name: "Product Documentation", href: "/contact" },
-    { name: "Warranty Information", href: "/contact" },
-  ],
   Legal: [
     { name: "Privacy Policy", href: "/privacy" },
     { name: "Terms of Service", href: "/terms" },
@@ -26,33 +30,27 @@ const footerNavigation = {
 };
 
 export function Footer() {
+  const getYear = () => new Date().getFullYear();
+  const currentYear = getYear();
   return (
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
           <div className="lg:col-span-2">
-            <div className="flex items-center mb-4">
-              <span className="text-2xl font-bold">DBHL</span>
-              <span className="text-sm text-gray-400 ml-1">Enterprises</span>
-            </div>
+            <Image
+              src="/logo2.webp"
+              alt="DBHL Enterprises Logo"
+              width={120}
+              height={120}
+              priority={true}
+              loading="eager"
+              className="mb-2"
+            />
             <p className="text-gray-300 mb-6 max-w-sm">
-              Specializing in networking & telecommunication solutions built on quality, honesty, and trust.
+              Specializing in networking & telecommunication solutions built on
+              quality, honesty, and trust.
             </p>
-            <div className="space-y-2 text-sm text-gray-300">
-              <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2 text-primary" />
-                <span>123 Tech Park Drive, Suite 100<br />San Jose, CA 95110</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="h-4 w-4 mr-2 text-primary" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center">
-                <Mail className="h-4 w-4 mr-2 text-primary" />
-                <span>info@dbhl-enterprises.com</span>
-              </div>
-            </div>
           </div>
 
           {/* Products */}
@@ -63,8 +61,8 @@ export function Footer() {
             <ul className="space-y-2">
               {footerNavigation.Products.map((item) => (
                 <li key={item.name}>
-                  <Link 
-                    href={item.href} 
+                  <Link
+                    href={item.href}
                     className="text-sm text-gray-300 hover:text-primary transition-colors"
                   >
                     {item.name}
@@ -82,27 +80,8 @@ export function Footer() {
             <ul className="space-y-2">
               {footerNavigation.Company.map((item) => (
                 <li key={item.name}>
-                  <Link 
-                    href={item.href} 
-                    className="text-sm text-gray-300 hover:text-primary transition-colors"
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Support
-            </h3>
-            <ul className="space-y-2">
-              {footerNavigation.Support.map((item) => (
-                <li key={item.name}>
-                  <Link 
-                    href={item.href} 
+                  <Link
+                    href={item.href}
                     className="text-sm text-gray-300 hover:text-primary transition-colors"
                   >
                     {item.name}
@@ -131,7 +110,9 @@ export function Footer() {
               </div>
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-400">
-              <span>&copy; 2024 DBHL Enterprises. All rights reserved.</span>
+              <span>
+                &copy; {currentYear} DBHL Enterprises. All rights reserved.
+              </span>
             </div>
           </div>
         </div>

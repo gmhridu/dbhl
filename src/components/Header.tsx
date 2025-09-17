@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Menu, X, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -24,10 +25,14 @@ export function Header() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary">DBHL</span>
-              <span className="text-sm text-muted-foreground ml-1">
-                Enterprises
-              </span>
+              <Image
+                src="/logo2.webp"
+                alt="DBHL Enterprises"
+                width={100}
+                height={100}
+                priority={true}
+                className="rounded-md filter invert"
+              />
             </Link>
           </div>
 
@@ -46,10 +51,6 @@ export function Header() {
 
           {/* Contact Info */}
           <div className="hidden md:flex items-center space-x-4 text-sm text-gray-600">
-            <div className="flex items-center">
-              <Phone className="h-4 w-4 mr-1" />
-              <span>+1 (555) 123-4567</span>
-            </div>
             <div className="flex items-center">
               <Mail className="h-4 w-4 mr-1" />
               <span>info@dbhl-enterprises.com</span>
@@ -78,7 +79,7 @@ export function Header() {
       <div
         className={cn(
           "md:hidden transition-all duration-300 ease-in-out overflow-hidden",
-          isOpen ? "max-h-96" : "max-h-0"
+          isOpen ? "max-h-96" : "max-h-0",
         )}
       >
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
@@ -93,10 +94,6 @@ export function Header() {
             </Link>
           ))}
           <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-3 text-gray-600">
-              <Phone className="h-4 w-4 mr-2" />
-              <span className="text-sm">+1 (555) 123-4567</span>
-            </div>
             <div className="flex items-center px-3 mt-2 text-gray-600">
               <Mail className="h-4 w-4 mr-2" />
               <span className="text-sm">info@dbhl-enterprises.com</span>

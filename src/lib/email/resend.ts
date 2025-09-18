@@ -247,7 +247,7 @@ export async function sendContactEmail(formData: ContactFormData) {
 
     const { data, error } = await resend.emails.send({
       from: "DBHL Contact Form <noreply@dbhl-enterprises.com>",
-      to: ["Dlevy@dbhl-enterprises.com"],
+      to: ["dlevy@dbhl-enterprises.com", "info@dbhl-enterprises.com"],
       subject: `New Contact Form Submission: ${formData.subject}`,
       html: emailHtml,
       replyTo: formData.email,

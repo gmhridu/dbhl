@@ -5,30 +5,37 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Distributor {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  password        String
-  name            String
-  company         String?
-  phone           String?
-  address         String?
-  city            String?
-  state           String?
-  zipCode         String?
-  country         String?
-  isActive        Boolean  @default(true)
-  lastLoginAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  password            String
+  name                String
+  company             String?
+  phone               String?
+  website             String?
+  businessType        String?
+  annualRevenue       String?
+  yearsInBusiness     String?
+  businessDescription String?
+  address             String?
+  city                String?
+  state               String?
+  zipCode             String?
+  country             String?
+  isActive            Boolean   @default(true)
+  isApproved          Boolean   @default(false)
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@map("distributors")
 }
@@ -48,21 +55,21 @@ model Category {
 }
 
 model Product {
-  id              String   @id @default(cuid())
-  name            String
-  description     String?
-  sku             String   @unique
-  price           Float?
-  category        Category @relation(fields: [categoryId], references: [id])
-  categoryId      String
-  images          Json?
-  features        Json?
-  specifications  Json?
-  isActive        Boolean  @default(true)
-  isFeatured      Boolean  @default(false)
-  tags            Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  sku            String   @unique
+  price          Float?
+  category       Category @relation(fields: [categoryId], references: [id])
+  categoryId     String
+  images         Json?
+  features       Json?
+  specifications Json?
+  isActive       Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
+  tags           Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("products")
 }

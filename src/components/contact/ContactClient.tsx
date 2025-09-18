@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -32,8 +32,12 @@ import {
   AlertCircle,
   ArrowRight,
   Shield,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { contactFormSchema } from "@/lib/schemas/contact";
+import { z } from "zod";
 
 const contactInfo = [
   {
@@ -56,6 +60,13 @@ const contactInfo = [
   },
 ];
 
+interface CaptchaData {
+  question: string;
+  options: number[];
+  timestamp: number;
+  hash: string;
+}
+
 export function ContactClient() {
   const [formData, setFormData] = useState({
     name: "",
@@ -69,7 +80,40 @@ export function ContactClient() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaData, setCaptchaData] = useState<CaptchaData | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState<number | null>(null);
+  const [isCaptchaLoading, setIsCaptchaLoading] = useState(false);
+
+  // Load CAPTCHA on component mount
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
+
+  const loadCaptcha = async () => {
+    setIsCaptchaLoading(true);
+    try {
+      const response = await fetch("/api/captcha");
+      if (response.ok) {
+        const data = await response.json();
+        setCaptchaData(data);
+        setCaptchaAnswer(null);
+        // Clear any previous CAPTCHA error
+        if (errors.captcha) {
+          setErrors((prev) => ({ ...prev, captcha: "" }));
+        }
+      } else {
+        throw new Error("Failed to load CAPTCHA");
+      }
+    } catch (error) {
+      console.error("Error loading CAPTCHA:", error);
+      setErrors((prev) => ({
+        ...prev,
+        captcha: "Failed to load verification. Please refresh the page.",
+      }));
+    } finally {
+      setIsCaptchaLoading(false);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -89,31 +133,43 @@ export function ContactClient() {
     }
   };
 
+  const handleCaptchaAnswer = (answer: number) => {
+    setCaptchaAnswer(answer);
+    if (errors.captcha) {
+      setErrors((prev) => ({ ...prev, captcha: "" }));
+    }
+  };
+
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+    try {
+      // Validate CAPTCHA first
+      if (!captchaAnswer || !captchaData) {
+        setErrors({ captcha: "Please complete the verification challenge" });
+        return false;
+      }
 
-    if (!formData.name) newErrors.name = "Name is required";
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-    if (!formData.subject) newErrors.subject = "Subject is required";
-    if (!formData.message) {
-      newErrors.message = "Message is required";
-    } else if (formData.message.length < 10) {
-      newErrors.message = "Message must be at least 10 characters";
-    }
-    if (!formData.department)
-      newErrors.department = "Please select a department";
+      // Validate form data with Zod schema
+      contactFormSchema.parse({
+        ...formData,
+        captchaAnswer,
+        captchaTimestamp: captchaData.timestamp,
+        captchaHash: captchaData.hash,
+      });
 
-    // Simple CAPTCHA validation (in real app, this would be more sophisticated)
-    if (!captchaToken) {
-      newErrors.captcha = "Please complete the CAPTCHA verification";
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.issues.forEach((err) => {
+          if (err.path) {
+            newErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+      return false;
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,35 +182,49 @@ export function ContactClient() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // In a real app, this would send the email via SMTP
-      console.log("Form submitted:", formData);
-
-      setIsSubmitted(true);
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        subject: "",
-        message: "",
-        department: "",
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          captchaAnswer,
+          captchaTimestamp: captchaData?.timestamp,
+          captchaHash: captchaData?.hash,
+        }),
       });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          company: "",
+          subject: "",
+          message: "",
+          department: "",
+        });
+        setCaptchaAnswer(null);
+        setCaptchaData(null);
+      } else {
+        setErrors({
+          general: result.error || "Failed to send message. Please try again.",
+        });
+        // Reload CAPTCHA after failed attempt
+        if (result.error?.includes("CAPTCHA")) {
+          loadCaptcha();
+        }
+      }
     } catch (error) {
-      setErrors({ general: "Failed to send message. Please try again later." });
+      setErrors({
+        general: "Network error. Please check your connection and try again.",
+      });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleCaptchaVerify = () => {
-    // Simulate CAPTCHA verification
-    // In a real app, this would integrate with reCAPTCHA or similar service
-    setCaptchaToken("verified");
-    if (errors.captcha) {
-      setErrors((prev) => ({ ...prev, captcha: "" }));
     }
   };
 
@@ -169,14 +239,12 @@ export function ContactClient() {
             </h2>
             <p className="text-gray-600 mb-6">
               Thank you for contacting DBHL Enterprises. We've received your
-              message and will get back to you within 24 hours.
+              message and will get back to you within 24 hours. You should also
+              receive a confirmation email shortly.
             </p>
             <div className="space-y-2">
               <Button asChild className="w-full">
                 <Link href="/">Return to Home</Link>
-              </Button>
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/contact">Send Another Message</Link>
               </Button>
             </div>
           </CardContent>
@@ -300,6 +368,9 @@ export function ContactClient() {
                           onChange={handleInputChange}
                           disabled={isSubmitting}
                         />
+                        {errors.phone && (
+                          <p className="text-sm text-red-500">{errors.phone}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="company">Company</Label>
@@ -311,6 +382,11 @@ export function ContactClient() {
                           onChange={handleInputChange}
                           disabled={isSubmitting}
                         />
+                        {errors.company && (
+                          <p className="text-sm text-red-500">
+                            {errors.company}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -377,50 +453,111 @@ export function ContactClient() {
                         onChange={handleInputChange}
                         disabled={isSubmitting}
                       />
-                      {errors.message && (
-                        <p className="text-sm text-red-500">{errors.message}</p>
-                      )}
-                    </div>
-
-                    {/* Simple CAPTCHA */}
-                    <div className="space-y-2">
-                      <Label>Verification *</Label>
-                      <div className="bg-gray-100 p-4 rounded-lg text-center">
-                        <p className="text-sm mb-2">What is 2 + 2?</p>
-                        <div className="flex justify-center gap-2">
-                          {[3, 4, 5, 6].map((num) => (
-                            <Button
-                              key={num}
-                              type="button"
-                              variant={
-                                captchaToken === "verified" && num === 4
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => num === 4 && handleCaptchaVerify()}
-                              disabled={isSubmitting}
-                            >
-                              {num}
-                            </Button>
-                          ))}
-                        </div>
-                        {errors.captcha && (
-                          <p className="text-sm text-red-500 mt-2">
-                            {errors.captcha}
+                      <div className="flex justify-between items-center">
+                        {errors.message && (
+                          <p className="text-sm text-red-500">
+                            {errors.message}
                           </p>
                         )}
+                        <p className="text-sm text-gray-500 ml-auto">
+                          {formData.message.length}/2000
+                        </p>
                       </div>
+                    </div>
+
+                    {/* Dynamic CAPTCHA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Verification *
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={loadCaptcha}
+                          disabled={isCaptchaLoading || isSubmitting}
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 mr-1 ${isCaptchaLoading ? "animate-spin" : ""}`}
+                          />
+                          New Challenge
+                        </Button>
+                      </div>
+                      <div className="bg-gray-100 p-4 rounded-lg">
+                        {isCaptchaLoading ? (
+                          <div className="text-center py-4">
+                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">
+                              Loading verification...
+                            </p>
+                          </div>
+                        ) : captchaData ? (
+                          <>
+                            <p className="text-sm mb-3 text-center font-medium">
+                              {captchaData.question}
+                            </p>
+                            <div className="flex justify-center gap-2 flex-wrap">
+                              {captchaData.options.map((option) => (
+                                <Button
+                                  key={option}
+                                  type="button"
+                                  variant={
+                                    captchaAnswer === option
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => handleCaptchaAnswer(option)}
+                                  disabled={isSubmitting}
+                                  className="min-w-[50px]"
+                                >
+                                  {option}
+                                </Button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-red-600 mb-2">
+                              Failed to load verification
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={loadCaptcha}
+                            >
+                              Try Again
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {errors.captcha && (
+                        <p className="text-sm text-red-500">{errors.captcha}</p>
+                      )}
                     </div>
 
                     <Button
                       type="submit"
                       className="w-full"
                       size="lg"
-                      disabled={isSubmitting}
+                      disabled={
+                        isSubmitting || !captchaData || captchaAnswer === null
+                      }
                     >
-                      {isSubmitting ? "Sending..." : "Send Message"}
-                      <Send className="ml-2 h-4 w-4" />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          Send Message
+                          <Send className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                   </form>
                 </CardContent>
@@ -461,6 +598,15 @@ export function ContactClient() {
                       <h4 className="font-semibold">Personalized Solutions</h4>
                       <p className="text-sm text-gray-600">
                         Tailored to your specific needs
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold">Email Confirmation</h4>
+                      <p className="text-sm text-gray-600">
+                        Receive immediate confirmation of your inquiry
                       </p>
                     </div>
                   </div>

@@ -74,16 +74,52 @@ export function LoginClient() {
 
     setIsLoading(true);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      // For demo purposes, we'll just show a success message
-      // In a real app, this would handle JWT authentication
-      console.log("Login successful", formData);
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setErrors({ general: "Invalid email or password" });
+        } else if (response.status === 403) {
+          if (data.error.includes("pending approval")) {
+            setErrors({
+              general:
+                "Your account is pending approval. Please wait for admin approval.",
+            });
+          } else {
+            setErrors({
+              general:
+                "Your account has been deactivated. Please contact support.",
+            });
+          }
+        } else {
+          setErrors({
+            general: data.error || "Login failed. Please try again.",
+          });
+        }
+        return;
+      }
+
+      // Login successful
+      setErrors({});
+
+      // Redirect to dashboard or home page
+      window.location.href = "/dashboard";
     } catch (error) {
+      console.error("Login error:", error);
       setErrors({
-        general: "Login failed. Please check your credentials and try again.",
+        general: "Network error. Please check your connection and try again.",
       });
     } finally {
       setIsLoading(false);

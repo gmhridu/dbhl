@@ -1,16 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import ZAI from 'z-ai-web-dev-sdk';
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { sendContactEmail, sendConfirmationEmail } from "@/lib/email/resend";
+import { verifyCaptchaHash } from "@/lib/captcha";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phone, company, subject, message, department } = await request.json();
+    const {
+      name,
+      email,
+      phone,
+      company,
+      department,
+      subject,
+      message,
+      captchaAnswer,
+      captchaTimestamp,
+      captchaHash,
+    } = await request.json();
 
     // Validate required fields
-    if (!name || !email || !subject || !message || !department) {
+    if (!name || !email || !department || !subject || !message) {
       return NextResponse.json(
-        { error: 'All required fields must be filled' },
-        { status: 400 }
+        { error: "All required fields must be filled" },
+        { status: 400 },
       );
     }
 
@@ -18,8 +30,38 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
+        { error: "Invalid email format" },
+        { status: 400 },
+      );
+    }
+
+    // Validate message length
+    if (message.length < 10) {
+      return NextResponse.json(
+        { error: "Message must be at least 10 characters long" },
+        { status: 400 },
+      );
+    }
+
+    // Validate CAPTCHA
+    if (!captchaAnswer || !captchaTimestamp || !captchaHash) {
+      return NextResponse.json(
+        { error: "Please complete the CAPTCHA verification" },
+        { status: 400 },
+      );
+    }
+
+    // Verify CAPTCHA hash
+    if (
+      !verifyCaptchaHash(
+        parseInt(captchaAnswer),
+        parseInt(captchaTimestamp),
+        captchaHash,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid CAPTCHA verification. Please try again." },
+        { status: 400 },
       );
     }
 
@@ -32,74 +74,49 @@ export async function POST(request: NextRequest) {
         company: company || null,
         subject,
         message,
-        department
-      }
+      },
     });
 
-    // Send email notification (using Z-AI SDK for demonstration)
+    // Send email notifications
     try {
-      const zai = await ZAI.create();
-      
-      // In a real implementation, you would use an email service like SendGrid, Mailgun, etc.
-      // For now, we'll just log the email content
-      console.log('Email notification would be sent here:', {
-        to: 'info@dbhl-enterprises.com',
-        subject: `New Contact Form Submission: ${subject}`,
-        body: `
-          New contact form submission from ${name}
-          
-          Name: ${name}
-          Email: ${email}
-          Phone: ${phone || 'Not provided'}
-          Company: ${company || 'Not provided'}
-          Department: ${department}
-          Subject: ${subject}
-          
-          Message:
-          ${message}
-          
-          Submitted at: ${new Date().toISOString()}
-        `
-      });
+      const emailData = {
+        name,
+        email,
+        phone,
+        company,
+        department,
+        subject,
+        message,
+      };
 
-      // You could also use the Z-AI SDK to generate a response or categorize the inquiry
-      const categorization = await zai.chat.completions.create({
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that categorizes customer inquiries. Please categorize the following message into one of: sales, support, billing, general, partnership.'
-          },
-          {
-            role: 'user',
-            content: `Subject: ${subject}\n\nMessage: ${message}`
-          }
-        ],
-        max_tokens: 10
-      });
+      // Send notification email to DBHL
+      await sendContactEmail(emailData);
 
-      console.log('AI categorization:', categorization.choices[0]?.message?.content);
+      // Send confirmation email to customer
+      await sendConfirmationEmail(emailData);
 
+      console.log("Email notifications sent successfully");
     } catch (emailError) {
-      console.error('Email sending error:', emailError);
+      console.error("Email sending error:", emailError);
       // Don't fail the request if email sending fails, just log it
+      // The form submission is still saved in the database
     }
 
     return NextResponse.json({
-      message: 'Contact form submitted successfully',
+      message: "Contact form submitted successfully",
       contact: {
         id: contact.id,
         name: contact.name,
         email: contact.email,
         subject: contact.subject,
-        createdAt: contact.createdAt
-      }
+        createdAt: contact.createdAt,
+      },
     });
-
   } catch (error) {
-    console.error('Contact form submission error:', error);
+    console.error("Contact form submission error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -108,17 +125,41 @@ export async function GET(request: NextRequest) {
   try {
     // This would be protected by authentication in a real app
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const search = searchParams.get("search") || "";
+    const department = searchParams.get("department") || "";
+    const isRead = searchParams.get("isRead");
     const offset = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { subject: { contains: search, mode: "insensitive" } },
+        { company: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (department) {
+      where.subject = { contains: department, mode: "insensitive" };
+    }
+
+    if (isRead !== null) {
+      where.isRead = isRead === "true";
+    }
 
     const [contacts, total] = await Promise.all([
       db.contact.findMany({
-        orderBy: { createdAt: 'desc' },
+        where,
+        orderBy: { createdAt: "desc" },
         skip: offset,
-        take: limit
+        take: limit,
       }),
-      db.contact.count()
+      db.contact.count({ where }),
     ]);
 
     return NextResponse.json({
@@ -127,15 +168,14 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching contacts:', error);
+    console.error("Error fetching contacts:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

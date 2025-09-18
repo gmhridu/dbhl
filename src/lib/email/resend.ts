@@ -60,14 +60,18 @@ function generateContactEmailHTML(formData: ContactFormData): string {
                 <td style="padding: 8px 0; font-weight: bold; width: 120px; color: #475569;">
                   Name:
                 </td>
-                <td style="padding: 8px 0; color: #1a1a1a;">${formData.name}</td>
+                <td style="padding: 8px 0; color: #1a1a1a;">${
+                  formData.name
+                }</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #475569;">
                   Email:
                 </td>
                 <td style="padding: 8px 0;">
-                  <a href="mailto:${formData.email}" style="color: #3b82f6; text-decoration: none;">
+                  <a href="mailto:${
+                    formData.email
+                  }" style="color: #3b82f6; text-decoration: none;">
                     ${formData.email}
                   </a>
                 </td>
@@ -138,7 +142,9 @@ function generateContactEmailHTML(formData: ContactFormData): string {
 
           <!-- Call to Action -->
           <div style="text-align: center; margin-top: 30px;">
-            <a href="mailto:${formData.email}?subject=Re: ${encodeURIComponent(formData.subject)}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
+            <a href="mailto:${formData.email}?subject=Re: ${encodeURIComponent(
+    formData.subject
+  )}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
               Reply to ${formData.name}
             </a>
           </div>
@@ -192,14 +198,18 @@ function generateConfirmationEmailHTML(formData: ContactFormData): string {
           </p>
 
           <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 20px;">
-            Thank you for reaching out to DBHL Enterprises. We have received your message regarding "<strong>${formData.subject}</strong>" and appreciate your interest in our services.
+            Thank you for reaching out to DBHL Enterprises. We have received your message regarding "<strong>${
+              formData.subject
+            }</strong>" and appreciate your interest in our services.
           </p>
 
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
             <h3 style="color: #1e40af; font-size: 16px; margin-bottom: 10px;">What happens next?</h3>
             <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
               <li>Our team will review your message within 24 hours</li>
-              <li>A specialist from our ${formData.department} department will respond to you</li>
+              <li>A specialist from our ${
+                formData.department
+              } department will respond to you</li>
               <li>We'll provide you with detailed information and next steps</li>
             </ul>
           </div>
@@ -220,9 +230,17 @@ function generateConfirmationEmailHTML(formData: ContactFormData): string {
           <!-- Message Summary -->
           <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
             <h3 style="color: #1e40af; font-size: 16px; margin-bottom: 10px;">Your Message Summary:</h3>
-            <p style="margin: 5px 0; color: #374151;"><strong>Subject:</strong> ${formData.subject}</p>
-            <p style="margin: 5px 0; color: #374151;"><strong>Department:</strong> ${formData.department}</p>
-            ${formData.company ? `<p style="margin: 5px 0; color: #374151;"><strong>Company:</strong> ${formData.company}</p>` : ""}
+            <p style="margin: 5px 0; color: #374151;"><strong>Subject:</strong> ${
+              formData.subject
+            }</p>
+            <p style="margin: 5px 0; color: #374151;"><strong>Department:</strong> ${
+              formData.department
+            }</p>
+            ${
+              formData.company
+                ? `<p style="margin: 5px 0; color: #374151;"><strong>Company:</strong> ${formData.company}</p>`
+                : ""
+            }
           </div>
         </div>
 
@@ -247,7 +265,7 @@ export async function sendContactEmail(formData: ContactFormData) {
 
     const { data, error } = await resend.emails.send({
       from: "DBHL Contact Form <noreply@dbhl-enterprises.com>",
-      to: ["dlevy@dbhl-enterprises.com", "info@dbhl-enterprises.com"],
+      to: ["husseinomer2022@outlook.com"],
       subject: `New Contact Form Submission: ${formData.subject}`,
       html: emailHtml,
       replyTo: formData.email,
